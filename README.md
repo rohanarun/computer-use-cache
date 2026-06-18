@@ -4,6 +4,8 @@
   <a href="https://discord.gg/supers"><img alt="Discord" src="https://img.shields.io/badge/Discord-join%20community-5865F2?logo=discord&logoColor=white"></a>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-111111.svg"></a>
   <a href="#quick-start"><img alt="Release: v0.1.0" src="https://img.shields.io/badge/Release-v0.1.0-0A7A53.svg"></a>
+  <a href="https://www.npmjs.com/package/computer-use-cache"><img alt="npm" src="https://img.shields.io/npm/v/computer-use-cache?color=CB3837&logo=npm&logoColor=white"></a>
+  <img alt="Node 18+" src="https://img.shields.io/badge/Node-18%2B-339933?logo=node.js&logoColor=white">
   <img alt="Python 3.11+" src="https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white">
   <img alt="OpenAI compatible" src="https://img.shields.io/badge/OpenAI-compatible-111111?logo=openai&logoColor=white">
   <img alt="OpenRouter compatible" src="https://img.shields.io/badge/OpenRouter-compatible-6C47FF">
@@ -16,7 +18,7 @@
 </p>
 
 <p align="center">
-  Cache repeated model requests, reduce upstream spend, and keep your existing OpenAI SDK code.
+  Cache repeated model requests, reduce upstream spend, and keep your existing OpenAI SDK or agent code.
 </p>
 
 <p align="center">
@@ -45,13 +47,15 @@
 
 Computer-Use Cache is a lightweight primitive for making repeatable agent workflows cheap and reliable. Model calls are expensive when agents repeat the same planning, coding, and tool-use prompts. This server sits between your app and any OpenAI-compatible provider, forwards cache misses upstream, stores successful JSON responses in SQLite, and serves exact repeated requests from cache.
 
-It is intentionally small and provider-neutral. There is no app auth, billing, credits, realtime voice, product state, or custom model catalog logic.
+It is intentionally small and provider-neutral. There is no app auth, billing, credits, realtime voice, product state, or custom model catalog logic. Use the npm package for a zero-dependency local proxy, or use the Python server when you want the SQLite implementation.
 
 ## Features
 
 - Drop-in `baseURL` replacement for OpenAI-compatible clients.
+- `npx` CLI for agents: `computer-use-cache start`, `init`, `stats`, `clear`, and `env`.
+- Zero-dependency Node proxy packaged for npm.
 - Works with OpenRouter by default and OpenAI directly via `UPSTREAM_BASE_URL`.
-- SQLite-backed response cache with TTL, model allowlists, and denylists.
+- File-backed npm cache or SQLite-backed Python cache with TTL, model allowlists, and denylists.
 - Cache hit/miss headers on every response.
 - Streaming support for cache hits via Server-Sent Events.
 - Request-level cache bypass controls.
@@ -60,7 +64,55 @@ It is intentionally small and provider-neutral. There is no app auth, billing, c
 
 ## Quick Start
 
-npm CLI for agents: https://www.npmjs.com/package/computer-use-cache
+### NPM Agent Tool
+
+Run a local OpenAI-compatible cache in front of OpenRouter or OpenAI:
+
+```bash
+export UPSTREAM_BASE_URL=https://openrouter.ai/api/v1
+export UPSTREAM_API_KEY=sk-or-v1-your-key-here
+
+npx -y computer-use-cache start
+```
+
+Point any OpenAI-compatible agent or SDK at:
+
+```bash
+export OPENAI_BASE_URL=http://127.0.0.1:8000/v1
+export OPENAI_API_KEY=$UPSTREAM_API_KEY
+```
+
+Useful CLI commands:
+
+```bash
+npx -y computer-use-cache init
+npx -y computer-use-cache env
+npx -y computer-use-cache stats
+npx -y computer-use-cache clear
+npx -y computer-use-cache doctor
+```
+
+Install locally:
+
+```bash
+npm i computer-use-cache
+computer-use-cache start --port 8000
+```
+
+### Paste This Into Any Agent
+
+```text
+Use Computer-Use Cache as the OpenAI-compatible base URL for repeatable computer-use, browser, coding, and tool workflows.
+
+Base URL: http://127.0.0.1:8000/v1
+
+Keep deterministic parameters stable when replaying work: model, messages, tools, tool_choice, response_format, temperature, top_p, and seed.
+Use cache: false only for private, one-off, or credential-bearing requests.
+Never include API keys, passwords, private tokens, or credentials in cached prompts.
+Check X-Computer-Use-Cache: HIT, MISS, or BYPASS to understand savings.
+```
+
+### Python Server
 
 ```bash
 cd code-model-cache-server
@@ -81,6 +133,8 @@ Point any OpenAI-compatible client at:
 http://127.0.0.1:8000/v1
 ```
 
+The npm and Python servers expose the same OpenAI-compatible routes.
+
 ## OpenAI SDK Example
 
 ```js
@@ -100,6 +154,18 @@ const result = await client.chat.completions.create({
 });
 
 console.log(result.choices[0].message.content);
+```
+
+## JS SDK Helper
+
+```js
+import OpenAI from "openai";
+import { openAIConfig } from "computer-use-cache";
+
+const client = new OpenAI(openAIConfig({
+  baseURL: "http://127.0.0.1:8000/v1",
+  apiKey: process.env.UPSTREAM_API_KEY,
+}));
 ```
 
 If `UPSTREAM_API_KEY` is configured on the server, client API keys are ignored for upstream forwarding. If it is not configured, the server forwards the incoming `Authorization: Bearer ...` token upstream.
@@ -124,10 +190,12 @@ The first request is a cache miss and gets forwarded upstream. Repeat the exact 
 Cache status is returned in headers:
 
 ```text
-X-Code-Model-Cache: MISS
-X-Code-Model-Cache-Key: ...
-X-Code-Model-Cache-Store: stored
+X-Computer-Use-Cache: MISS
+X-Computer-Use-Cache-Key: ...
+X-Computer-Use-Cache-Store: stored
 ```
+
+The legacy `X-Code-Model-Cache` headers are also returned for compatibility.
 
 ## Routes
 
@@ -163,8 +231,9 @@ docker run --rm -p 8000:8000 \
 | `UPSTREAM_BASE_URL` | `https://openrouter.ai/api/v1` | Upstream OpenAI-compatible base URL. |
 | `UPSTREAM_API_KEY` | empty | Server-side upstream API key. Falls back to `OPENROUTER_API_KEY` or `OPENAI_API_KEY`. |
 | `UPSTREAM_TIMEOUT_SECONDS` | `180` | Upstream request timeout. |
-| `HOST` | `0.0.0.0` | Flask bind host for local runs. |
-| `PORT` | `8000` | Flask bind port for local runs. |
+| `HOST` | `127.0.0.1` for npm, `0.0.0.0` for Python | Bind host for local runs. |
+| `PORT` | `8000` | Bind port for local runs. |
+| `CACHE_DIR` | `./.computer-use-cache` | NPM package file cache directory. |
 | `CACHE_DB_PATH` | `./code_model_cache.sqlite3` | SQLite cache location. |
 | `CACHE_ENABLED` | `1` | Default cache behavior. Requests can override with `"cache": false`. |
 | `CACHE_TTL_SECONDS` | `2592000` | Cache entry TTL. Set `0` to disable expiry. |

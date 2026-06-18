@@ -1,0 +1,60 @@
+{
+  "name": "computer-use-cache",
+  "version": "0.1.0",
+  "description": "OpenAI-compatible cache proxy and CLI that helps agents reduce repeated computer-use model costs.",
+  "type": "module",
+  "license": "MIT",
+  "author": "SuperPowers AI",
+  "homepage": "https://github.com/rohanarun/computer-use-cache#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rohanarun/computer-use-cache.git"
+  },
+  "bugs": {
+    "url": "https://github.com/rohanarun/computer-use-cache/issues"
+  },
+  "keywords": [
+    "computer-use",
+    "cache",
+    "openai",
+    "openrouter",
+    "agents",
+    "llm",
+    "proxy",
+    "chat-completions",
+    "cost-savings"
+  ],
+  "bin": {
+    "computer-use-cache": "bin/computer-use-cache.mjs"
+  },
+  "exports": {
+    ".": "./src/client.mjs",
+    "./server": "./src/server.mjs"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "server.py",
+    "requirements.txt",
+    "Dockerfile",
+    ".env.example",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "start": "node bin/computer-use-cache.mjs start",
+    "test": "npm run test:smoke && npm run test:cli",
+    "test:smoke": "node test/smoke.mjs",
+    "test:cli": "node bin/computer-use-cache.mjs --version && node bin/computer-use-cache.mjs doctor",
+    "pack:check": "npm pack --dry-run --cache ./.npm-cache",
+    "publish:dry": "npm publish --dry-run --cache ./.npm-cache",
+    "publish:npm": "npm publish --cache ./.npm-cache",
+    "prepublishOnly": "npm test && npm run pack:check"
+  },
+  "engines": {
+    "node": ">=18.17"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
