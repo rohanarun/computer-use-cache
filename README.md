@@ -60,6 +60,8 @@ It is intentionally small and provider-neutral. There is no app auth, billing, c
 
 ## Quick Start
 
+npm CLI for agents: https://www.npmjs.com/package/computer-use-cache
+
 ```bash
 cd code-model-cache-server
 
