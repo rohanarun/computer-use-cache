@@ -1,0 +1,7 @@
+.computer-use-cache/
+.npm-cache/
+node_modules/
+npm-debug.log*
+computer-use-cache-*.tgz
+*.sqlite3
+*.db
