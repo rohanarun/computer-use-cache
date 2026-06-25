@@ -8,6 +8,34 @@ import { createComputerUseCacheServer, configFromEnv } from '../src/server.mjs';
 const PACKAGE_JSON = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 const VERSION = PACKAGE_JSON.version || '0.0.0';
 
+const AGENT_TARGETS = {
+  codex: {
+    label: 'Codex',
+    filename: 'codex.md',
+    command: 'Use http://127.0.0.1:8000/v1 as the OpenAI-compatible base URL for repeatable coding and computer-use tasks.'
+  },
+  'claude-code': {
+    label: 'Claude Code',
+    filename: 'claude-code.md',
+    command: 'Point Claude Code-compatible OpenAI routes at http://127.0.0.1:8000/v1 for repeated tool workflows.'
+  },
+  cursor: {
+    label: 'Cursor',
+    filename: 'cursor.md',
+    command: 'Set the custom OpenAI-compatible endpoint to http://127.0.0.1:8000/v1 and reuse stable prompts for cache hits.'
+  },
+  openclaw: {
+    label: 'OpenClaw',
+    filename: 'openclaw.md',
+    command: 'Configure the OpenAI-compatible provider base URL as http://127.0.0.1:8000/v1 before running repeatable app automations.'
+  },
+  hermes: {
+    label: 'Hermes',
+    filename: 'hermes.md',
+    command: 'Use Computer-Use Cache as the model provider base URL for repeated browser, shell, and computer-use skills.'
+  }
+};
+
 function usage() {
   return `Computer-Use Cache ${VERSION}
 
@@ -16,6 +44,7 @@ OpenAI-compatible cache proxy for repeatable computer-use and agent workflows.
 Usage:
   computer-use-cache start [--port 8000] [--host 127.0.0.1] [--upstream https://openrouter.ai/api/v1]
   computer-use-cache init [--dir .]
+  computer-use-cache install [codex|claude-code|cursor|openclaw|hermes|all] [--dir .]
   computer-use-cache env [--port 8000]
   computer-use-cache stats [--url http://127.0.0.1:8000]
   computer-use-cache clear [--url http://127.0.0.1:8000] [--admin-token token]
@@ -23,6 +52,7 @@ Usage:
 
 Examples:
   npx -y computer-use-cache start --upstream https://openrouter.ai/api/v1
+  npx -y computer-use-cache install all
   export OPENAI_BASE_URL=http://127.0.0.1:8000/v1
   export OPENAI_API_KEY=$OPENROUTER_API_KEY
 `;
@@ -102,6 +132,56 @@ export OPENAI_API_KEY=$UPSTREAM_API_KEY
   await writeFile(path.join(targetDir, 'computer-use-cache.config.json'), `${configText}\n`, 'utf8');
 }
 
+function agentInstallText(target) {
+  return `# Computer-Use Cache for ${target.label}
+
+Computer-Use Cache is a drop-in OpenAI-compatible cache for repeatable computer-use, browser, coding, and tool workflows.
+
+## Run the cache
+
+\`\`\`bash
+export UPSTREAM_BASE_URL=https://openrouter.ai/api/v1
+export UPSTREAM_API_KEY=sk-or-v1-your-key
+npx -y computer-use-cache start
+\`\`\`
+
+## Configure ${target.label}
+
+Base URL:
+
+\`\`\`text
+http://127.0.0.1:8000/v1
+\`\`\`
+
+API key:
+
+\`\`\`text
+$UPSTREAM_API_KEY
+\`\`\`
+
+${target.command}
+
+## Agent instruction
+
+Use the cache for repeated workflows where the same model request, tools, and deterministic parameters can replay safely. Do not cache private credentials, one-off secrets, passwords, API keys, or user tokens. Check \`X-Computer-Use-Cache\` for \`HIT\`, \`MISS\`, or \`BYPASS\`.
+`;
+}
+
+async function writeInstallFiles(targetDir, targetName) {
+  await writeInitFiles(targetDir);
+  const installDir = path.join(targetDir, '.computer-use-cache', 'agents');
+  await mkdir(installDir, { recursive: true });
+  const names = targetName === 'all' ? Object.keys(AGENT_TARGETS) : [targetName];
+  for (const name of names) {
+    const target = AGENT_TARGETS[name];
+    if (!target) {
+      throw new Error(`Unknown install target "${name}". Use one of: ${Object.keys(AGENT_TARGETS).join(', ')}, all`);
+    }
+    await writeFile(path.join(installDir, target.filename), agentInstallText(target), 'utf8');
+  }
+  return names;
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const command = args._[0] || (args.version ? 'version' : args.help ? 'help' : 'help');
@@ -117,6 +197,15 @@ async function main() {
     const dir = path.resolve(String(args.dir || args.d || '.'));
     await writeInitFiles(dir);
     console.log(`Created Computer-Use Cache agent files in ${dir}`);
+    console.log('Next: npx -y computer-use-cache start');
+    return;
+  }
+  if (command === 'install') {
+    const target = String(args._[1] || 'all').toLowerCase();
+    const dir = path.resolve(String(args.dir || args.d || '.'));
+    const names = await writeInstallFiles(dir, target);
+    console.log(`Installed Computer-Use Cache setup files for: ${names.map((name) => AGENT_TARGETS[name].label).join(', ')}`);
+    console.log(`Files: ${path.join(dir, '.computer-use-cache', 'agents')}`);
     console.log('Next: npx -y computer-use-cache start');
     return;
   }

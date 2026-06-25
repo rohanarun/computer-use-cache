@@ -1,11 +1,11 @@
 {
   "name": "computer-use-cache",
   "version": "0.1.0",
-  "description": "OpenAI-compatible cache proxy and CLI that helps agents reduce repeated computer-use model costs.",
+  "description": "Drop-in OpenAI-compatible cache that replays repeated computer-use and agent workflows at near-zero cost.",
   "type": "module",
   "license": "MIT",
   "author": "SuperPowers AI",
-  "homepage": "https://github.com/rohanarun/computer-use-cache#readme",
+  "homepage": "https://app.getsupers.com/developer/api-dashboard",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/rohanarun/computer-use-cache.git"
@@ -15,14 +15,24 @@
   },
   "keywords": [
     "computer-use",
+    "ai-agents",
+    "agent-tools",
     "cache",
+    "codex",
+    "claude-code",
+    "cursor",
+    "openclaw",
+    "hermes",
     "openai",
+    "openai-compatible",
     "openrouter",
-    "agents",
     "llm",
+    "llm-cache",
     "proxy",
     "chat-completions",
-    "cost-savings"
+    "cost-savings",
+    "browserbase",
+    "daytona"
   ],
   "bin": {
     "computer-use-cache": "bin/computer-use-cache.mjs"
@@ -37,6 +47,7 @@
     "server.py",
     "requirements.txt",
     "Dockerfile",
+    "examples/",
     ".env.example",
     "README.md",
     "LICENSE"

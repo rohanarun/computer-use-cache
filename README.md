@@ -14,11 +14,11 @@
 </p>
 
 <p align="center">
-  <strong>A new primitive for replaying repeated computer-use and agent workflows through an OpenAI-compatible cache.</strong>
+  <strong>Stop paying twice for the same computer-use task.</strong>
 </p>
 
 <p align="center">
-  Cache repeated model requests, reduce upstream spend, and keep your existing OpenAI SDK or agent code.
+  Replay repeated browser, coding, and tool workflows at near-zero cost through a drop-in OpenAI-compatible API.
 </p>
 
 <p align="center">
@@ -26,39 +26,33 @@
 </p>
 
 <p align="center">
-  <a href="https://storage.googleapis.com/cheatlayer/landing/superpowers-draft-v1.mp4"><strong>Watch the launch video</strong></a>
-</p>
-
-<p align="center">
-  <a href="https://storage.googleapis.com/cheatlayer/landing/superpowers-draft-v1.mp4">
-    <img src="https://storage.googleapis.com/cheatlayer/landing/computer-use-cache-launch-preview.jpg" alt="Watch the Super launch video" width="100%">
-  </a>
-</p>
-
-<p align="center">
-  <a href="https://app.getsupers.com/developer/api-dashboard"><strong>Try the live Super API dashboard</strong></a>
+  <strong>Benchmark preview:</strong> 256/256 cache hits, 100% computer-use cost saved, 60%+ faster runtime.
   <br>
-  Use our hosted version with thousands of cached actions already available.
+  <strong>Live demo:</strong>
+  <br>
+  <a href="https://app.getsupers.com/developer/api-dashboard"><strong>Try the live Super API dashboard</strong></a>
 </p>
 
 ---
 
 ## Why This Exists
 
-Computer-Use Cache is a lightweight primitive for making repeatable agent workflows cheap and reliable. Model calls are expensive when agents repeat the same planning, coding, and tool-use prompts. This server sits between your app and any OpenAI-compatible provider, forwards cache misses upstream, stores successful JSON responses in SQLite, and serves exact repeated requests from cache.
+Computer-Use Cache makes repeatable agent workflows cheap and reliable. Computer-use agents often repeat the same planning, browser, coding, and tool-use prompts. This server sits between your app and any OpenAI-compatible provider, forwards cache misses upstream, stores successful JSON responses, and serves exact repeated requests from cache.
 
 It is intentionally small and provider-neutral. There is no app auth, billing, credits, realtime voice, product state, or custom model catalog logic. Use the npm package for a zero-dependency local proxy, or use the Python server when you want the SQLite implementation.
 
 ## Features
 
 - Drop-in `baseURL` replacement for OpenAI-compatible clients.
-- `npx` CLI for agents: `computer-use-cache start`, `init`, `stats`, `clear`, and `env`.
+- One-command setup for Codex, Claude Code, Cursor, OpenClaw, and Hermes.
+- `npx` CLI for agents: `computer-use-cache start`, `install`, `init`, `stats`, `clear`, and `env`.
 - Zero-dependency Node proxy packaged for npm.
 - Works with OpenRouter by default and OpenAI directly via `UPSTREAM_BASE_URL`.
 - File-backed npm cache or SQLite-backed Python cache with TTL, model allowlists, and denylists.
 - Cache hit/miss headers on every response.
 - Streaming support for cache hits via Server-Sent Events.
 - Request-level cache bypass controls.
+- Concrete examples for YouTube downloads, website generation, Browserbase replay, Daytona replay, OpenClaw, and Hermes.
 - Docker and Gunicorn-ready deployment.
 - MIT licensed.
 
@@ -66,13 +60,24 @@ It is intentionally small and provider-neutral. There is no app auth, billing, c
 
 ### NPM Agent Tool
 
-Run a local OpenAI-compatible cache in front of OpenRouter or OpenAI:
+Install setup files for your agent, then run a local OpenAI-compatible cache in front of OpenRouter or OpenAI:
 
 ```bash
 export UPSTREAM_BASE_URL=https://openrouter.ai/api/v1
 export UPSTREAM_API_KEY=sk-or-v1-your-key-here
 
+npx -y computer-use-cache install all
 npx -y computer-use-cache start
+```
+
+Install one agent at a time:
+
+```bash
+npx -y computer-use-cache install codex
+npx -y computer-use-cache install claude-code
+npx -y computer-use-cache install cursor
+npx -y computer-use-cache install openclaw
+npx -y computer-use-cache install hermes
 ```
 
 Point any OpenAI-compatible agent or SDK at:
@@ -85,6 +90,7 @@ export OPENAI_API_KEY=$UPSTREAM_API_KEY
 Useful CLI commands:
 
 ```bash
+npx -y computer-use-cache install all
 npx -y computer-use-cache init
 npx -y computer-use-cache env
 npx -y computer-use-cache stats
@@ -134,6 +140,16 @@ http://127.0.0.1:8000/v1
 ```
 
 The npm and Python servers expose the same OpenAI-compatible routes.
+
+## Concrete Workflows
+
+These examples are designed to make cache wins obvious. The first run does the real work. The second run reuses the same model request and should return `X-Computer-Use-Cache: HIT`.
+
+- [YouTube download workflow](examples/youtube-download.md)
+- [Generated website workflow](examples/website-generation.md)
+- [Browserbase replay workflow](examples/browserbase-replay.md)
+- [Daytona replay workflow](examples/daytona-replay.md)
+- [OpenClaw and Hermes provider setup](examples/openclaw-hermes.md)
 
 ## OpenAI SDK Example
 
