@@ -51,8 +51,8 @@ Usage:
   computer-use-cache doctor
 
 Examples:
-  npx -y computer-use-cache start --upstream https://openrouter.ai/api/v1
-  npx -y computer-use-cache install all
+  npx -y github:rohanarun/computer-use-cache start --upstream https://openrouter.ai/api/v1
+  npx -y github:rohanarun/computer-use-cache install all
   export OPENAI_BASE_URL=http://127.0.0.1:8000/v1
   export OPENAI_API_KEY=$OPENROUTER_API_KEY
 `;
@@ -142,7 +142,7 @@ Computer-Use Cache is a drop-in OpenAI-compatible cache for repeatable computer-
 \`\`\`bash
 export UPSTREAM_BASE_URL=https://openrouter.ai/api/v1
 export UPSTREAM_API_KEY=sk-or-v1-your-key
-npx -y computer-use-cache start
+npx -y github:rohanarun/computer-use-cache start
 \`\`\`
 
 ## Configure ${target.label}
@@ -197,7 +197,7 @@ async function main() {
     const dir = path.resolve(String(args.dir || args.d || '.'));
     await writeInitFiles(dir);
     console.log(`Created Computer-Use Cache agent files in ${dir}`);
-    console.log('Next: npx -y computer-use-cache start');
+    console.log('Next: computer-use-cache start');
     return;
   }
   if (command === 'install') {
@@ -206,7 +206,7 @@ async function main() {
     const names = await writeInstallFiles(dir, target);
     console.log(`Installed Computer-Use Cache setup files for: ${names.map((name) => AGENT_TARGETS[name].label).join(', ')}`);
     console.log(`Files: ${path.join(dir, '.computer-use-cache', 'agents')}`);
-    console.log('Next: npx -y computer-use-cache start');
+    console.log('Next: computer-use-cache start');
     return;
   }
   if (command === 'env') {

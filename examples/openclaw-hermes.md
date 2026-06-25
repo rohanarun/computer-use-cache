@@ -7,7 +7,7 @@ Computer-Use Cache behaves like an OpenAI-compatible provider. Any agent that su
 ```bash
 export UPSTREAM_BASE_URL=https://openrouter.ai/api/v1
 export UPSTREAM_API_KEY=sk-or-v1-your-key
-npx -y computer-use-cache start
+npx -y github:rohanarun/computer-use-cache start
 ```
 
 ## Provider values

@@ -5,10 +5,10 @@ Use this when an agent generates the same landing page, microsite, or static art
 ## Install
 
 ```bash
-npx -y computer-use-cache install codex
+npx -y github:rohanarun/computer-use-cache install codex
 export UPSTREAM_BASE_URL=https://openrouter.ai/api/v1
 export UPSTREAM_API_KEY=sk-or-v1-your-key
-npx -y computer-use-cache start
+npx -y github:rohanarun/computer-use-cache start
 ```
 
 ## Agent prompt

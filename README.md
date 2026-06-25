@@ -3,7 +3,7 @@
 <p align="center">
   <a href="https://discord.gg/supers"><img alt="Discord" src="https://img.shields.io/badge/Discord-join%20community-5865F2?logo=discord&logoColor=white"></a>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-111111.svg"></a>
-  <a href="#quick-start"><img alt="Release: v0.1.0" src="https://img.shields.io/badge/Release-v0.1.0-0A7A53.svg"></a>
+  <a href="#quick-start"><img alt="Release: v0.1.1" src="https://img.shields.io/badge/Release-v0.1.1-0A7A53.svg"></a>
   <a href="https://www.npmjs.com/package/computer-use-cache"><img alt="npm" src="https://img.shields.io/npm/v/computer-use-cache?color=CB3837&logo=npm&logoColor=white"></a>
   <img alt="Node 18+" src="https://img.shields.io/badge/Node-18%2B-339933?logo=node.js&logoColor=white">
   <img alt="Python 3.11+" src="https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white">
@@ -66,18 +66,18 @@ Install setup files for your agent, then run a local OpenAI-compatible cache in 
 export UPSTREAM_BASE_URL=https://openrouter.ai/api/v1
 export UPSTREAM_API_KEY=sk-or-v1-your-key-here
 
-npx -y computer-use-cache install all
-npx -y computer-use-cache start
+npx -y github:rohanarun/computer-use-cache install all
+npx -y github:rohanarun/computer-use-cache start
 ```
 
 Install one agent at a time:
 
 ```bash
-npx -y computer-use-cache install codex
-npx -y computer-use-cache install claude-code
-npx -y computer-use-cache install cursor
-npx -y computer-use-cache install openclaw
-npx -y computer-use-cache install hermes
+npx -y github:rohanarun/computer-use-cache install codex
+npx -y github:rohanarun/computer-use-cache install claude-code
+npx -y github:rohanarun/computer-use-cache install cursor
+npx -y github:rohanarun/computer-use-cache install openclaw
+npx -y github:rohanarun/computer-use-cache install hermes
 ```
 
 Point any OpenAI-compatible agent or SDK at:
@@ -90,12 +90,12 @@ export OPENAI_API_KEY=$UPSTREAM_API_KEY
 Useful CLI commands:
 
 ```bash
-npx -y computer-use-cache install all
-npx -y computer-use-cache init
-npx -y computer-use-cache env
-npx -y computer-use-cache stats
-npx -y computer-use-cache clear
-npx -y computer-use-cache doctor
+npx -y github:rohanarun/computer-use-cache install all
+npx -y github:rohanarun/computer-use-cache init
+npx -y github:rohanarun/computer-use-cache env
+npx -y github:rohanarun/computer-use-cache stats
+npx -y github:rohanarun/computer-use-cache clear
+npx -y github:rohanarun/computer-use-cache doctor
 ```
 
 Install locally:

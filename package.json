@@ -1,6 +1,6 @@
 {
   "name": "computer-use-cache",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Drop-in OpenAI-compatible cache that replays repeated computer-use and agent workflows at near-zero cost.",
   "type": "module",
   "license": "MIT",
