@@ -22,6 +22,10 @@
 </p>
 
 <p align="center">
+  Now uses <a href="https://docs.typesafe.ai/models">TypeSafe’s JEV</a> for optional model-guided cache reuse. Set your own <code>TYPESAFE_API_KEY</code> to enable it.
+</p>
+
+<p align="center">
   <img src="https://storage.googleapis.com/cheatlayer/landing/computer-use-cache-super-api-hero.jpeg" alt="Super API computer-use cache benchmark preview" width="100%">
 </p>
 
@@ -43,6 +47,7 @@ It is intentionally small and provider-neutral. There is no app auth, billing, c
 
 ## Features
 
+- TypeSafe’s JEV (`jev-latest`) judges whether a cached response can satisfy a new request unchanged, with your own API key.
 - Drop-in `baseURL` replacement for OpenAI-compatible clients.
 - One-command setup for Codex, Claude Code, Cursor, OpenClaw, and Hermes.
 - `npx` CLI for agents: `computer-use-cache start`, `install`, `init`, `stats`, `clear`, and `env`.
