@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { selectReusableEntry } from './jev.mjs';
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -272,6 +273,22 @@ class FileCompletionCache {
     }
   }
 
+  async candidates(current) {
+    await this.ensure();
+    const entries = [];
+    for (const file of await readdir(this.entriesDir)) {
+      if (!file.endsWith('.json')) continue;
+      try {
+        const entry = JSON.parse(await readFile(path.join(this.entriesDir, file), 'utf8'));
+        if (entry.mode !== current.mode || entry.model !== current.model
+            || entry.request?.credential_scope !== current.credential_scope) continue;
+        if (this.config.ttlSeconds > 0 && Date.now() / 1000 - entry.created_at > this.config.ttlSeconds) continue;
+        entries.push(entry);
+      } catch { /* Corrupt entries are not candidates. */ }
+    }
+    return entries.sort((a, b) => b.updated_at - a.updated_at).slice(0, this.config.jevMaxCandidates);
+  }
+
   async store(cacheKey, mode, requestPayload, responsePayload) {
     if (!responsePayload || typeof responsePayload !== 'object' || Array.isArray(responsePayload)) return 'skipped: response is not a JSON object';
     const cloned = cloneJson(responsePayload);
@@ -354,6 +371,13 @@ export function configFromEnv(overrides = {}) {
   const ignoreKeys = new Set(DEFAULT_CACHE_IGNORE_KEYS);
   for (const key of listFromValue(overrides.cacheIgnoreKeys ?? process.env.CACHE_IGNORE_KEYS)) ignoreKeys.add(key);
   return {
+    typesafeApiKey: String(overrides.typesafeApiKey ?? process.env.TYPESAFE_API_KEY ?? '').trim(),
+    typesafeBaseUrl: String(overrides.typesafeBaseUrl ?? process.env.TYPESAFE_BASE_URL ?? 'https://api.typesafe.ai/v1').replace(/\/+$/, ''),
+    jevModel: String(overrides.jevModel ?? process.env.JEV_MODEL ?? 'jev-latest'),
+    jevMinConfidence: Math.min(1, Math.max(0, floatFromValue(overrides.jevMinConfidence ?? process.env.JEV_MIN_CONFIDENCE, 0.95))),
+    jevMaxCandidates: Math.min(254, Math.max(1, intFromValue(overrides.jevMaxCandidates ?? process.env.JEV_MAX_CANDIDATES, 8))),
+    jevMaxInputChars: intFromValue(overrides.jevMaxInputChars ?? process.env.JEV_MAX_INPUT_CHARS, 24000),
+    jevTimeoutMs: Math.max(1, floatFromValue(overrides.jevTimeoutSeconds ?? process.env.JEV_TIMEOUT_SECONDS, 10) * 1000),
     host: String(overrides.host ?? process.env.HOST ?? '127.0.0.1'),
     port: intFromValue(overrides.port ?? process.env.PORT, 8000),
     upstreamBaseUrl: String(overrides.upstreamBaseUrl ?? process.env.UPSTREAM_BASE_URL ?? process.env.OPENAI_BASE_URL ?? 'https://openrouter.ai/api/v1').replace(/\/+$/, ''),
@@ -385,6 +409,10 @@ async function proxyJson(req, res, config, cache, routePath, mode) {
     return;
   }
 
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    sendJson(res, 400, openAiError('Request body must be an object.').body);
+    return;
+  }
   const wantsStream = Boolean(data.stream);
   const bypassHeader = boolFromValue(req.headers['x-cache-bypass'], false);
   const cacheEnabled = config.cacheEnabled && requestCacheEnabled(data, true) && !bypassHeader;
@@ -393,11 +421,22 @@ async function proxyJson(req, res, config, cache, routePath, mode) {
   let bypassReason = '';
 
   if (cacheEnabled) {
-    const normalized = normalizedCacheInput(data, mode, config);
+    const credential_scope = createHash('sha256').update(JSON.stringify([
+      config.upstreamBaseUrl, config.upstreamApiKey || bearerFromHeaders(req.headers)
+    ])).digest('hex');
+    const normalized = normalizedCacheInput({ ...data, credential_scope }, mode, config);
     if (normalized.cacheKey) {
       cacheKey = normalized.cacheKey;
       requestPayload = normalized.requestPayload;
-      const hit = await cache.lookup(cacheKey);
+      let hit = await cache.lookup(cacheKey);
+      let match = 'exact';
+      if (!hit && config.typesafeApiKey && !wantsStream && typeof cache.candidates === 'function') {
+        const selected = await selectReusableEntry(requestPayload, await cache.candidates(requestPayload), config);
+        if (selected) {
+          hit = await cache.lookup(selected.cache_key);
+          match = 'jev';
+        }
+      }
       if (hit?.response) {
         if (wantsStream) {
           res.writeHead(200, responseHeaders({
@@ -409,7 +448,7 @@ async function proxyJson(req, res, config, cache, routePath, mode) {
           res.end();
           return;
         }
-        sendJson(res, 200, withCacheMetadata(hit.response, config, true, cacheKey), cacheHeaders('HIT', cacheKey));
+        sendJson(res, 200, withCacheMetadata(hit.response, config, true, cacheKey), { ...cacheHeaders('HIT', cacheKey), 'x-computer-use-cache-match': match });
         return;
       }
     } else {

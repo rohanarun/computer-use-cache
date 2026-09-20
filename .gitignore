@@ -5,3 +5,10 @@ npm-debug.log*
 computer-use-cache-*.tgz
 *.sqlite3
 *.db
+
+.env
+.env.*
+!.env.example
+!.env.computer-use-cache.example
+__pycache__/
+.venv/

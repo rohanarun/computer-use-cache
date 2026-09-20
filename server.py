@@ -81,6 +81,16 @@ UPSTREAM_API_KEY = (
 ).strip()
 UPSTREAM_TIMEOUT_SECONDS = env_float("UPSTREAM_TIMEOUT_SECONDS", 180.0)
 
+TYPESAFE_API_KEY = os.environ.get("TYPESAFE_API_KEY", "").strip()
+TYPESAFE_BASE_URL = os.environ.get("TYPESAFE_BASE_URL", "https://api.typesafe.ai/v1").rstrip("/")
+JEV_MODEL = os.environ.get("JEV_MODEL", "jev-latest")
+JEV_MIN_CONFIDENCE = min(1.0, max(0.0, env_float("JEV_MIN_CONFIDENCE", 0.95)))
+JEV_MAX_CANDIDATES = min(254, max(1, env_int("JEV_MAX_CANDIDATES", 8)))
+JEV_MAX_INPUT_CHARS = env_int("JEV_MAX_INPUT_CHARS", 24000)
+JEV_TIMEOUT_SECONDS = max(0.001, env_float("JEV_TIMEOUT_SECONDS", 10))
+with open(os.path.join(os.path.dirname(__file__), "src", "jev-question.json"), encoding="utf-8") as question_file:
+    JEV_QUESTION = json.load(question_file)
+
 CACHE_DB_PATH = os.environ.get(
     "CACHE_DB_PATH",
     os.path.join(os.getcwd(), "code_model_cache.sqlite3"),
@@ -330,6 +340,29 @@ class CompletionCache:
                     "updated_at": row["updated_at"],
                     "hits": int(row["hits"] or 0) + 1,
                 }
+
+    def candidates(self, current):
+        with self.lock:
+            with self.connect() as conn:
+                rows = conn.execute(
+                    "SELECT * FROM completions WHERE mode = ? AND model = ? ORDER BY updated_at DESC",
+                    (current["mode"], current["model"]),
+                )
+                result = []
+                for row in rows:
+                    try:
+                        previous = json.loads(row["request_json"])
+                        if previous.get("credential_scope") != current.get("credential_scope"):
+                            continue
+                        if CACHE_TTL_SECONDS > 0 and now_seconds() - row["created_at"] > CACHE_TTL_SECONDS:
+                            continue
+                        result.append({"cache_key": row["cache_key"], "request": previous,
+                                       "response": json.loads(row["response_json"])})
+                        if len(result) >= JEV_MAX_CANDIDATES:
+                            break
+                    except (ValueError, TypeError):
+                        continue
+                return result
 
     def store(self, cache_key: str, mode: str, request_payload: Dict[str, Any], response_payload: Dict[str, Any]) -> str:
         response_for_cache, reason = response_cache_payload(response_payload)
@@ -659,10 +692,46 @@ def should_bypass_cache(data: Dict[str, Any], mode: str) -> Tuple[bool, Optional
         return True, None, None, "X-Cache-Bypass requested"
     if not request_cache_enabled(data):
         return True, None, None, "cache disabled for request"
-    cache_key, cache_payload, reason = normalized_cache_input(data, mode)
+    cache_key, cache_payload, reason = normalized_cache_input({**data, "credential_scope": hashlib.sha256(
+        json.dumps([UPSTREAM_BASE_URL, UPSTREAM_API_KEY or bearer_from_request()]).encode()
+    ).hexdigest()}, mode)
     if not cache_key or not cache_payload:
         return True, None, None, reason or "request is not cacheable"
     return False, cache_key, cache_payload, ""
+
+
+def select_reusable_entry(current, candidates):
+    if not TYPESAFE_API_KEY or not candidates:
+        return None
+    criteria = dict(JEV_QUESTION["criteria"])
+    state = {"current": current, "candidates": {}}
+    for index, entry in enumerate(candidates):
+        name = f"candidate_{index}"
+        criteria[name] = f"Return {name} unchanged."
+        state["candidates"][name] = {"request": entry["request"], "response": entry["response"]}
+    if len(json.dumps(state)) > JEV_MAX_INPUT_CHARS:
+        return None
+    try:
+        response = requests.post(
+            f"{TYPESAFE_BASE_URL}/systemone",
+            headers={"Authorization": f"Bearer {TYPESAFE_API_KEY}"},
+            json={"model": JEV_MODEL, "state": state,
+                  "questions": {"reuse": {**JEV_QUESTION, "criteria": criteria}}},
+            timeout=JEV_TIMEOUT_SECONDS,
+        )
+        response.raise_for_status()
+        answer = response.json()["answers"]["reuse"]
+        confidence = answer.get("confidence")
+        if answer.get("type") != "choice" or type(confidence) not in (int, float):
+            return None
+        if not JEV_MIN_CONFIDENCE <= confidence <= 1:
+            return None
+        for index, entry in enumerate(candidates):
+            if answer.get("choice") == f"candidate_{index}":
+                return entry
+    except (requests.RequestException, ValueError, KeyError, TypeError, AttributeError):
+        pass
+    return None
 
 
 def handle_completion(path: str, mode: str) -> Response:
@@ -677,12 +746,19 @@ def handle_completion(path: str, mode: str) -> Response:
 
     if not bypass and cache_key:
         cached_entry = cache.lookup(cache_key)
+        match = "exact"
+        if not cached_entry and TYPESAFE_API_KEY and not requested_stream:
+            selected = select_reusable_entry(cache_payload, cache.candidates(cache_payload))
+            if selected:
+                cached_entry = cache.lookup(selected["cache_key"])
+                match = "jev"
         if cached_entry and isinstance(cached_entry.get("response"), dict):
             cached_payload = add_cache_metadata(cached_entry["response"], True, cache_key)
             if requested_stream:
                 return cached_stream_response(cached_payload, mode, cache_key)
             response = jsonify(cached_payload)
             response.headers["X-Code-Model-Cache"] = "HIT"
+            response.headers["X-Computer-Use-Cache-Match"] = match
             response.headers["X-Code-Model-Cache-Key"] = cache_key
             return response
 
