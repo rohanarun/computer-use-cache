@@ -141,6 +141,48 @@ http://127.0.0.1:8000/v1
 
 The npm and Python servers expose the same OpenAI-compatible routes.
 
+## JEV-powered cache reuse
+
+Set your own TypeSafe API key to enable JEV in either server:
+
+```bash
+export TYPESAFE_API_KEY=your-typesafe-api-key
+export JEV_MODEL=jev-latest
+export UPSTREAM_API_KEY=your-generation-provider-key
+npx -y github:rohanarun/computer-use-cache start
+```
+
+The Node CLI also accepts `--typesafe-api-key` and `--jev-model`, or the server
+factory accepts `typesafeApiKey` and `jevModel`. Prefer environment variables for
+secrets. The CLI reports whether a key is set without printing it. Generated env
+examples are templates: export the values before starting the server.
+
+JEV is a structured decision model, not a chat generator. Exact hits stay local.
+After an exact miss, JEV compares recent cached requests and responses with the
+current request and chooses an unchanged reusable response or `none`. A rejected,
+uncertain, malformed, timed-out, or failed decision falls through to your normal
+upstream generation provider. Without `TYPESAFE_API_KEY`, caching remains exact-only.
+The TypeSafe key is separate from the upstream key and is never put into cached
+requests or forwarded to the generation provider.
+
+This is opt-in: current request content and candidate requests/responses are sent
+to TypeSafe for judgment. Only unexpired entries for the same upstream, credential
+scope, model and endpoint are candidates. Existing unscoped cache files are not
+reused. Explicit bypass, sensitive-input checks and model filters run first.
+Streaming requests use exact caching only. A semantic hit has
+`X-Computer-Use-Cache-Match: jev`; an ordinary JSON exact hit has `exact`.
+
+Defaults are `JEV_MODEL=jev-latest`, `JEV_MIN_CONFIDENCE=0.95`,
+`JEV_MAX_CANDIDATES=8`, `JEV_MAX_INPUT_CHARS=24000`, and `JEV_TIMEOUT_SECONDS=10`.
+These are configurable operating defaults, not validated accuracy guarantees.
+Oversized comparison state skips JEV. Tune the prompt in `src/jev-question.json`
+and evaluate thresholds against your workflows before relying on semantic reuse.
+For live observations, irreversible tool actions, or freshness-sensitive work,
+use `cache: false`. Cache replay returns a model response; it does not prove an
+external action ran. Pin a versioned JEV model if you need stable judge behavior.
+See the [TypeSafe API](https://docs.typesafe.ai/api) and
+[model catalog](https://docs.typesafe.ai/models).
+
 ## Concrete Workflows
 
 These examples are designed to make cache wins obvious. The first run does the real work. The second run reuses the same model request and should return `X-Computer-Use-Cache: HIT`.

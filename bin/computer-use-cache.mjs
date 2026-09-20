@@ -43,6 +43,7 @@ OpenAI-compatible cache proxy for repeatable computer-use and agent workflows.
 
 Usage:
   computer-use-cache start [--port 8000] [--host 127.0.0.1] [--upstream https://openrouter.ai/api/v1]
+  computer-use-cache start --typesafe-api-key KEY [--jev-model jev-latest]
   computer-use-cache init [--dir .]
   computer-use-cache install [codex|claude-code|cursor|openclaw|hermes|all] [--dir .]
   computer-use-cache env [--port 8000]
@@ -90,6 +91,9 @@ async function writeInitFiles(targetDir) {
   const envText = `# Computer-Use Cache
 UPSTREAM_BASE_URL=https://openrouter.ai/api/v1
 UPSTREAM_API_KEY=sk-or-v1-your-key
+# Optional: enable JEV reuse decisions with your own TypeSafe key.
+TYPESAFE_API_KEY=
+JEV_MODEL=jev-latest
 HOST=127.0.0.1
 PORT=8000
 CACHE_DIR=.computer-use-cache
@@ -220,6 +224,8 @@ async function main() {
     console.log(`node: ${process.version}`);
     console.log(`fetch: ${typeof fetch === 'function' ? 'ok' : 'missing'}`);
     console.log(`upstream key: ${process.env.UPSTREAM_API_KEY || process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY ? 'set' : 'missing'}`);
+    console.log(`TypeSafe key: ${configFromEnv(args).typesafeApiKey ? 'set' : 'missing (exact cache only)'}`);
+    console.log(`JEV model: ${configFromEnv(args).jevModel}`);
     console.log(`cache dir: ${configFromEnv(args).cacheDir}`);
     return;
   }
@@ -242,6 +248,9 @@ async function main() {
       port: args.port,
       upstreamBaseUrl: args.upstream || args.upstreamBaseUrl,
       upstreamApiKey: args.upstreamApiKey,
+      typesafeApiKey: args.typesafeApiKey,
+      typesafeBaseUrl: args.typesafeBaseUrl,
+      jevModel: args.jevModel,
       cacheDir: args.cacheDir,
       adminToken: args.adminToken
     };

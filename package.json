@@ -54,7 +54,7 @@
   ],
   "scripts": {
     "start": "node bin/computer-use-cache.mjs start",
-    "test": "npm run test:smoke && npm run test:cli",
+    "test": "npm run test:smoke && node test/jev.mjs && npm run test:cli",
     "test:smoke": "node test/smoke.mjs",
     "test:cli": "node bin/computer-use-cache.mjs --version && node bin/computer-use-cache.mjs doctor",
     "pack:check": "npm pack --dry-run --cache ./.npm-cache",
